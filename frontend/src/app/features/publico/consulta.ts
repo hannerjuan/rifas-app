@@ -95,8 +95,7 @@ import { DosCifrasPipe, FechaPipe, PesosPipe, TelefonoPipe } from '../../shared/
                   @if (res.pendiente) {
                     <div class="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                       <p>
-                        ⚠️ Tienes boletas <b>sin pagar</b>. Si no se pagan antes del sorteo, <b>no juegan</b> y el premio queda para el
-                        vendedor.
+                        ⚠️ Tienes boletas <b>sin pagar</b>. Si no se pagan antes del sorteo, <b>no juegan</b>
                       </p>
                       <a [href]="enlacePago(res)" target="_blank" rel="noopener" class="btn btn-whatsapp btn-sm mt-2">
                         Enviar comprobante a {{ res.rifa.responsableNombre }}
