@@ -1,0 +1,30 @@
+# Blueprint de Render: un solo servicio web gratuito (API + frontend)
+services:
+  - type: web
+    name: rifas-app
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1" # Render pone un proxy delante: necesario para el límite de peticiones por IP
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: DATABASE_URL
+        sync: false # se pega a mano: cadena de conexión de Neon
+      - key: CORS_ORIGINS
+        sync: false # https://<tu-servicio>.onrender.com
+      - key: ADMIN_NOMBRE
+        value: Hanner Obando
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

@@ -1,0 +1,12 @@
+{
+  "name": "rifas-app",
+  "private": true,
+  "description": "Despliegue en un solo servicio: la API sirve también el frontend compilado",
+  "scripts": {
+    "build": "npm ci --include=dev --prefix backend && npm ci --include=dev --prefix frontend && npm run build --prefix frontend && npx --prefix backend prisma generate --schema backend/prisma/schema.prisma && npm run build --prefix backend",
+    "start": "cd backend && npx prisma migrate deploy && npx prisma db seed && node dist/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
