@@ -19,7 +19,9 @@ services:
       - key: JWT_EXPIRES_IN
         value: 12h
       - key: DATABASE_URL
-        sync: false # se pega a mano: cadena de conexión de Neon
+        sync: false # Neon, conexión CON pooler (host con "-pooler"): la usa la app
+      - key: DATABASE_URL_UNPOOLED
+        sync: false # Neon, conexión directa (sin "-pooler"): la usan las migraciones
       - key: CORS_ORIGINS
         sync: false # https://<tu-servicio>.onrender.com
       - key: ADMIN_NOMBRE

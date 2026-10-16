@@ -6,7 +6,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url       = env("DATABASE_URL") // Neon: conexión con pooler (la usa la app)
+  directUrl = env("DATABASE_URL_UNPOOLED") // Neon: conexión directa (la usan las migraciones)
 }
 
 enum EstadoRifa {

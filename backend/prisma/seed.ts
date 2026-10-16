@@ -14,8 +14,9 @@ async function main() {
     }
 
     const nombre = process.env.ADMIN_NOMBRE?.trim() || 'Administrador';
-    const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-    const password = process.env.ADMIN_PASSWORD ?? '';
+    // Acepta ADMIN_* (Render) o SEED_ADMIN_* (.env local)
+    const email = (process.env.ADMIN_EMAIL ?? process.env.SEED_ADMIN_EMAIL)?.trim().toLowerCase();
+    const password = process.env.ADMIN_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD ?? '';
     if (!email || password.length < 8) {
         throw new Error('Defina ADMIN_EMAIL y ADMIN_PASSWORD (mínimo 8 caracteres) en el archivo .env');
     }
