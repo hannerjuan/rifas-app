@@ -1,0 +1,140 @@
+// Modelo de datos de la app de rifas 00-99
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EstadoRifa {
+  ACTIVA
+  FINALIZADA
+  CANCELADA
+}
+
+enum EstadoBoleta {
+  DISPONIBLE
+  RESERVADA
+  PAGADA
+}
+
+// GANADOR: la boleta ganadora estaba pagada. CASA: no estaba pagada (o no se vendió) y el premio queda para el vendedor.
+enum ResultadoSorteo {
+  GANADOR
+  CASA
+}
+
+// Administradores (único rol de la app)
+model Usuario {
+  id           String   @id @default(uuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rifasCreadas Rifa[]
+  ventas       Venta[]
+  movimientos  MovimientoBoleta[]
+
+  @@map("usuarios")
+}
+
+model Rifa {
+  id                  String     @id @default(uuid())
+  nombre              String
+  premioNombre        String
+  premioDescripcion   String?
+  premioUrl           String? // ficha técnica oficial
+  premioImagenUrl     String? // imagen oficial del premio
+  valorBoleta         Int // pesos colombianos; fijo para todas las boletas de la rifa
+  fechaSorteo         DateTime // fecha y hora del sorteo de la lotería
+  loteria             String
+  responsableNombre   String
+  responsableTelefono String // normalizado: 57 + 10 dígitos
+  estado              EstadoRifa @default(ACTIVA)
+
+  // Resultado (se llena al finalizar)
+  resultadoLoteria String? // número de 4 cifras que arrojó la lotería
+  numeroGanador    Int? // dos últimas cifras del resultado
+  resultado        ResultadoSorteo?
+  ganadorNombre    String? // copia de los datos del ganador al momento de cerrar
+  ganadorTelefono  String?
+  finalizadaEn     DateTime?
+  canceladaEn      DateTime?
+
+  creadaPorId String
+  creadaPor   Usuario  @relation(fields: [creadaPorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  boletas Boleta[]
+  ventas  Venta[]
+
+  @@index([estado])
+  @@map("rifas")
+}
+
+// Una venta agrupa los números que un comprador adquirió en una misma operación
+model Venta {
+  id         String   @id @default(uuid())
+  rifaId     String
+  nombre     String
+  telefono   String // normalizado: 57 + 10 dígitos
+  vendedorId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  rifa     Rifa     @relation(fields: [rifaId], references: [id])
+  vendedor Usuario  @relation(fields: [vendedorId], references: [id])
+  boletas  Boleta[]
+
+  @@index([rifaId])
+  @@index([telefono])
+  @@map("ventas")
+}
+
+// Las 100 boletas (00-99) se crean junto con la rifa
+model Boleta {
+  id          String       @id @default(uuid())
+  rifaId      String
+  numero      Int // 0..99
+  estado      EstadoBoleta @default(DISPONIBLE)
+  ventaId     String?
+  reservadaEn DateTime?
+  pagadaEn    DateTime?
+  updatedAt   DateTime     @updatedAt
+
+  rifa        Rifa               @relation(fields: [rifaId], references: [id])
+  venta       Venta?             @relation(fields: [ventaId], references: [id])
+  movimientos MovimientoBoleta[]
+
+  @@unique([rifaId, numero])
+  @@index([rifaId, estado])
+  @@index([ventaId])
+  @@map("boletas")
+}
+
+// Auditoría de cada cambio de estado (guarda copia del comprador porque la venta puede desaparecer al liberar)
+model MovimientoBoleta {
+  id             String       @id @default(uuid())
+  boletaId       String
+  estadoAnterior EstadoBoleta
+  estadoNuevo    EstadoBoleta
+  ventaId        String?
+  nombre         String?
+  telefono       String?
+  motivo         String?
+  usuarioId      String
+  createdAt      DateTime     @default(now())
+
+  boleta  Boleta  @relation(fields: [boletaId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@index([boletaId])
+  @@map("movimientos_boleta")
+}

@@ -1,0 +1,234 @@
+@if (rifa(); as r) {
+  <a routerLink="/admin" class="text-sm text-slate-500 hover:text-marca-700">← Rifas</a>
+
+  <!-- Encabezado -->
+  <section class="tarjeta mt-2 flex flex-col gap-4 p-4 sm:flex-row sm:p-5">
+    <div class="flex h-28 w-full shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-marca-100 to-fuchsia-100 sm:w-36">
+      @if (r.premioImagenUrl) {
+        <img [src]="r.premioImagenUrl" [alt]="r.premioNombre" class="h-full w-full object-contain p-2" />
+      } @else {
+        <span class="text-5xl" aria-hidden="true">🏆</span>
+      }
+    </div>
+    <div class="min-w-0 flex-1">
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-xl font-extrabold text-slate-900 sm:text-2xl">{{ r.nombre }}</h1>
+        @switch (r.estado) {
+          @case ('ACTIVA') {
+            <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">Activa</span>
+          }
+          @case ('FINALIZADA') {
+            <span class="rounded-full bg-fuchsia-100 px-2 py-0.5 text-xs font-semibold text-fuchsia-800">Finalizada</span>
+          }
+          @case ('CANCELADA') {
+            <span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">Cancelada</span>
+          }
+        }
+      </div>
+      <p class="mt-1 text-slate-700">
+        🏆 <b>{{ r.premioNombre }}</b>
+        @if (r.premioUrl) {
+          · <a [href]="r.premioUrl" target="_blank" rel="noopener" class="text-sm text-marca-700 hover:underline">ficha técnica ↗</a>
+        }
+      </p>
+      <div class="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-500">
+        <span>📅 {{ r.fechaSorteo | fecha }}</span>
+        <span>🎰 {{ r.loteria }}</span>
+        <span>💵 {{ r.valorBoleta | pesos }} por boleta</span>
+        <span>📱 {{ r.responsableNombre }} · {{ r.responsableTelefono | telefono }}</span>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2">
+        @if (r.estado === 'ACTIVA') {
+          <a [routerLink]="['/admin/rifas', r.id, 'editar']" class="btn btn-sm btn-secundario">✎ Editar</a>
+        }
+        <button type="button" class="btn btn-sm btn-secundario" [disabled]="exportando() !== ''" (click)="exportar('pdf')">
+          {{ exportando() === 'pdf' ? 'Generando…' : '⬇ PDF' }}
+        </button>
+        <button type="button" class="btn btn-sm btn-secundario" [disabled]="exportando() !== ''" (click)="exportar('excel')">
+          {{ exportando() === 'excel' ? 'Generando…' : '⬇ Excel' }}
+        </button>
+        @if (r.estado !== 'CANCELADA') {
+          <button type="button" class="btn btn-sm btn-secundario" (click)="copiarEnlacePublico()">🔗 Copiar enlace público</button>
+        }
+        @if (r.estado === 'ACTIVA') {
+          <button type="button" class="btn btn-sm btn-secundario text-rose-700!" (click)="cancelar()">Cancelar rifa</button>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Avisos de estado -->
+  @if (porFinalizar()) {
+    <div class="mt-4 flex flex-col items-start justify-between gap-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center">
+      <p class="text-sm text-amber-900">
+        <b>El sorteo ya se jugó.</b> Las ventas y los cambios de estado están bloqueados. Registre el resultado de la
+        {{ r.loteria }} para finalizar la rifa.
+      </p>
+      <button type="button" class="btn btn-primario shrink-0" (click)="finalizar()">Registrar resultado</button>
+    </div>
+  }
+  @if (r.estado === 'FINALIZADA') {
+    <div
+      class="mt-4 rounded-2xl border-2 p-4 sm:p-5"
+      [class]="r.resultado === 'GANADOR' ? 'border-emerald-300 bg-emerald-50' : 'border-fuchsia-300 bg-fuchsia-50'"
+    >
+      <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+        <div class="text-center">
+          <p class="text-xs font-semibold text-slate-500 uppercase">Resultado {{ r.resultadoLoteria }}</p>
+          <p class="text-5xl font-extrabold text-slate-900 tabular-nums">{{ r.numeroGanador | dosCifras }}</p>
+        </div>
+        <div class="flex-1">
+          @if (r.resultado === 'GANADOR') {
+            <p class="text-lg font-bold text-emerald-900">🎉 Ganador: {{ r.ganadorNombre }}</p>
+            <p class="text-sm text-emerald-800">{{ r.ganadorTelefono | telefono }} · boleta pagada</p>
+          } @else {
+            <p class="text-lg font-bold text-fuchsia-900">El premio queda para el vendedor</p>
+            <p class="text-sm text-fuchsia-800">El número ganador no estaba pagado (o no se vendió), por eso no participó.</p>
+          }
+        </div>
+        @if (enlaceGanador()) {
+          <a [href]="enlaceGanador()" target="_blank" rel="noopener" class="btn btn-whatsapp">Avisar al ganador</a>
+        }
+      </div>
+    </div>
+  }
+  @if (r.estado === 'CANCELADA') {
+    <p class="mt-4 rounded-2xl bg-slate-200 p-4 text-sm text-slate-700">Esta rifa fue cancelada.</p>
+  }
+
+  <!-- Métricas -->
+  <section class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+    <div class="tarjeta border-l-4 border-l-emerald-500 p-3">
+      <p class="text-xs font-medium text-slate-500">Pagadas</p>
+      <p class="text-2xl font-extrabold text-emerald-700">{{ metricas().pagadas }}</p>
+    </div>
+    <div class="tarjeta border-l-4 border-l-amber-400 p-3">
+      <p class="text-xs font-medium text-slate-500">Reservadas</p>
+      <p class="text-2xl font-extrabold text-amber-600">{{ metricas().reservadas }}</p>
+    </div>
+    <div class="tarjeta border-l-4 border-l-slate-300 p-3">
+      <p class="text-xs font-medium text-slate-500">Disponibles</p>
+      <p class="text-2xl font-extrabold text-slate-700">{{ metricas().disponibles }}</p>
+    </div>
+    <div class="tarjeta p-3">
+      <p class="text-xs font-medium text-slate-500">Recaudado</p>
+      <p class="text-lg font-extrabold text-slate-900">{{ metricas().recaudado | pesos }}</p>
+    </div>
+    <div class="tarjeta col-span-2 p-3 sm:col-span-1">
+      <p class="text-xs font-medium text-slate-500">Por cobrar</p>
+      <p class="text-lg font-extrabold text-amber-700">{{ metricas().porCobrar | pesos }}</p>
+    </div>
+  </section>
+
+  <!-- Pestañas -->
+  <div class="mt-5 mb-3 inline-flex rounded-xl bg-slate-200 p-1 text-sm font-semibold" role="tablist">
+    <button
+      type="button"
+      role="tab"
+      class="cursor-pointer rounded-lg px-4 py-1.5"
+      [class]="pestana() === 'matriz' ? 'bg-white text-marca-800 shadow' : 'text-slate-600'"
+      (click)="pestana.set('matriz')"
+    >
+      Matriz 00-99
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="cursor-pointer rounded-lg px-4 py-1.5"
+      [class]="pestana() === 'compradores' ? 'bg-white text-marca-800 shadow' : 'text-slate-600'"
+      (click)="pestana.set('compradores')"
+    >
+      Compradores ({{ compradores().length }})
+    </button>
+  </div>
+
+  @if (pestana() === 'matriz') {
+    <section class="tarjeta p-3 sm:p-5" [class.pb-24]="seleccion().length">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-1.5">
+          @for (f of filtros; track f.valor) {
+            <button
+              type="button"
+              class="cursor-pointer rounded-full border px-3 py-1 text-xs font-semibold transition"
+              [class]="filtro() === f.valor ? 'border-marca-700 bg-marca-700 text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-marca-500'"
+              (click)="filtro.set(f.valor)"
+            >
+              {{ f.etiqueta }}
+            </button>
+          }
+        </div>
+        <app-leyenda [items]="leyenda" />
+      </div>
+
+      <app-matriz-boletas [celdas]="celdas()" (elegir)="elegir($event)" />
+
+      <p class="mt-3 text-xs text-slate-500">
+        @if (abierta()) {
+          Toque los números disponibles para venderlos (puede elegir varios). Toque un número vendido para ver al comprador,
+          cambiar el estado o liberarlo.
+        } @else {
+          Toque un número vendido para ver al comprador.
+        }
+      </p>
+    </section>
+  } @else {
+    <section class="tarjeta p-3 sm:p-5">
+      <input
+        type="search"
+        class="campo mb-3"
+        placeholder="Buscar por nombre, WhatsApp o número…"
+        [value]="busqueda()"
+        (input)="busqueda.set($any($event.target).value)"
+      />
+      <ul class="divide-y divide-slate-100">
+        @for (c of compradoresFiltrados(); track c.ventaId) {
+          <li class="flex flex-col gap-2 py-3 sm:flex-row sm:items-center">
+            <button type="button" class="min-w-0 flex-1 cursor-pointer text-left" (click)="abrirComprador(c.ventaId)">
+              <p class="font-semibold text-slate-900 hover:text-marca-700">{{ c.nombre }}</p>
+              <p class="text-xs text-slate-500">{{ c.telefono | telefono }}</p>
+            </button>
+            <div class="flex flex-wrap gap-1">
+              @for (b of c.boletas; track b.numero) {
+                <span
+                  class="rounded-md px-2 py-0.5 text-sm font-bold tabular-nums"
+                  [class]="b.estado === 'PAGADA' ? 'bg-emerald-500 text-white' : 'bg-amber-300 text-amber-950'"
+                  >{{ b.numero | dosCifras }}</span
+                >
+              }
+            </div>
+            <div class="flex items-center gap-2 sm:w-44 sm:justify-end">
+              @if (c.pendiente) {
+                <span class="text-xs font-semibold text-amber-700">Debe {{ c.pendiente | pesos }}</span>
+              } @else {
+                <span class="text-xs font-semibold text-emerald-700">Al día</span>
+              }
+              <button type="button" class="btn btn-sm btn-secundario" (click)="abrirComprador(c.ventaId)">Ver</button>
+            </div>
+          </li>
+        } @empty {
+          <li class="py-8 text-center text-sm text-slate-500">
+            {{ busqueda() ? 'Sin resultados.' : 'Aún no hay compradores.' }}
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <!-- Barra de selección para vender -->
+  @if (seleccion().length && pestana() === 'matriz') {
+    <div class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-semibold text-slate-900">
+            {{ seleccion().length }} {{ seleccion().length === 1 ? 'número' : 'números' }}: {{ listaNumeros(seleccion()) }}
+          </p>
+          <p class="text-xs text-slate-500">Total {{ totalSeleccion() | pesos }}</p>
+        </div>
+        <button type="button" class="btn btn-secundario" (click)="limpiarSeleccion()">Limpiar</button>
+        <button type="button" class="btn btn-primario" (click)="vender()">Vender</button>
+      </div>
+    </div>
+  }
+} @else {
+  <p class="text-slate-500">Cargando…</p>
+}

@@ -1,0 +1,87 @@
+@import 'tailwindcss';
+@import '@angular/cdk/overlay-prebuilt.css';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Color de marca (violeta) */
+  --color-marca-50: #f5f3ff;
+  --color-marca-100: #ede9fe;
+  --color-marca-200: #ddd6fe;
+  --color-marca-500: #8b5cf6;
+  --color-marca-600: #7c3aed;
+  --color-marca-700: #6d28d9;
+  --color-marca-800: #5b21b6;
+  --color-marca-900: #4c1d95;
+
+  --color-whatsapp: #1fa855;
+  --color-whatsapp-oscuro: #128c4a;
+}
+
+body {
+  @apply min-h-screen bg-slate-50 text-slate-800 antialiased;
+}
+
+/* Botones: usar "btn" + una variante (btn-primario, btn-secundario...) */
+@layer components {
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold
+      transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marca-600
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primario {
+    @apply bg-marca-700 text-white hover:bg-marca-800;
+  }
+  .btn-secundario {
+    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-100;
+  }
+  .btn-peligro {
+    @apply bg-rose-600 text-white hover:bg-rose-700;
+  }
+  .btn-whatsapp {
+    @apply bg-whatsapp text-white hover:bg-whatsapp-oscuro;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .campo {
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-xs
+      placeholder:text-slate-400 focus:border-marca-600 focus:ring-2 focus:ring-marca-200 focus:outline-none
+      disabled:bg-slate-100 disabled:text-slate-500;
+  }
+  .campo.ng-invalid.ng-touched {
+    @apply border-rose-500 focus:ring-rose-200;
+  }
+  .etiqueta {
+    @apply mb-1 block text-sm font-medium text-slate-700;
+  }
+  .error {
+    @apply mt-1 text-xs text-rose-600;
+  }
+  .ayuda {
+    @apply mt-1 text-xs text-slate-500;
+  }
+
+  .tarjeta {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+  }
+
+  /* Diálogos (CDK) */
+  .dialogo {
+    @apply flex max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl;
+  }
+  .dialogo-encabezado {
+    @apply flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4;
+  }
+  .dialogo-cuerpo {
+    @apply overflow-y-auto px-5 py-4;
+  }
+  .dialogo-pie {
+    @apply flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3;
+  }
+}
+
+.cdk-overlay-dark-backdrop {
+  background: rgb(15 23 42 / 0.55);
+}
