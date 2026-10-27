@@ -6,15 +6,21 @@ import { startWith } from 'rxjs';
 import { AvisosService } from '../../core/avisos.service';
 import { DESFASE_COLOMBIA, RESPONSABLE_POR_DEFECTO } from '../../core/config';
 import { mensajeError } from '../../core/errores';
-import { DIAS_SEMANA, normalizarTelefono, pesos } from '../../core/formato';
+import {
+  componerTelefono,
+  DIAS_SEMANA,
+  ERROR_TELEFONO,
+  PAISES_TELEFONO,
+  PaisTelefono,
+  pesos,
+  separarTelefono,
+} from '../../core/formato';
+import { telefonoConPais } from '../../shared/telefono';
 import { Loteria } from '../../core/modelos';
 import { RifaEntrada, RifasService } from '../../core/rifas.service';
 
 const OTRA = '__otra__';
 
-function telefonoValido(control: AbstractControl): ValidationErrors | null {
-  return control.value && !normalizarTelefono(control.value) ? { telefono: true } : null;
-}
 
 function urlValida(control: AbstractControl): ValidationErrors | null {
   if (!control.value) return null;
@@ -199,9 +205,21 @@ function proximaFecha(loteria: Loteria): string {
             </div>
             <div>
               <label class="etiqueta" for="responsableTelefono">WhatsApp *</label>
-              <input id="responsableTelefono" type="tel" class="campo" formControlName="responsableTelefono" placeholder="300 123 4567" />
+              <div class="flex gap-2">
+                <select
+                  class="campo w-28 shrink-0"
+                  formControlName="responsablePais"
+                  aria-label="País del número"
+                  (change)="form.controls.responsableTelefono.updateValueAndValidity()"
+                >
+                  @for (p of paises; track p.codigo) {
+                    <option [value]="p.codigo">{{ p.etiqueta }}</option>
+                  }
+                </select>
+                <input id="responsableTelefono" type="tel" inputmode="tel" class="campo" formControlName="responsableTelefono" />
+              </div>
               @if (invalido('responsableTelefono')) {
-                <p class="error">Celular colombiano de 10 dígitos.</p>
+                <p class="error">{{ errorTelefono }}</p>
               }
             </div>
           </div>
@@ -228,6 +246,8 @@ export class RifaForm implements OnInit {
   readonly id = input<string>(); // ruta /admin/rifas/:id/editar
 
   protected readonly OTRA = OTRA;
+  protected readonly paises = PAISES_TELEFONO;
+  protected readonly errorTelefono = ERROR_TELEFONO;
   protected readonly pesos = pesos;
   protected readonly loterias = signal<Loteria[]>([]);
   protected readonly guardando = signal(false);
@@ -245,7 +265,8 @@ export class RifaForm implements OnInit {
     hora: ['22:30', Validators.required],
     valorBoleta: [null as number | null, [Validators.required, Validators.min(100), Validators.pattern(/^\d+$/)]],
     responsableNombre: [RESPONSABLE_POR_DEFECTO.nombre, [Validators.required, Validators.minLength(3)]],
-    responsableTelefono: [RESPONSABLE_POR_DEFECTO.telefono, [Validators.required, telefonoValido]],
+    responsablePais: ['CO' as PaisTelefono],
+    responsableTelefono: [RESPONSABLE_POR_DEFECTO.telefono, [Validators.required, telefonoConPais('responsablePais')]],
   });
 
   protected readonly valores = toSignal(this.form.valueChanges.pipe(startWith(this.form.getRawValue())), {
@@ -301,7 +322,8 @@ export class RifaForm implements OnInit {
             hora,
             valorBoleta: r.valorBoleta,
             responsableNombre: r.responsableNombre,
-            responsableTelefono: r.responsableTelefono.slice(2),
+            responsablePais: separarTelefono(r.responsableTelefono).pais,
+            responsableTelefono: separarTelefono(r.responsableTelefono).numero,
           });
           if (r.metricas.pagadas + r.metricas.reservadas > 0) {
             this.valorBloqueado.set(true);
@@ -364,7 +386,7 @@ export class RifaForm implements OnInit {
       fechaSorteo: fechaSorteo.toISOString(),
       loteria,
       responsableNombre: v.responsableNombre.trim(),
-      responsableTelefono: v.responsableTelefono,
+      responsableTelefono: componerTelefono(v.responsablePais, v.responsableTelefono),
     };
 
     this.guardando.set(true);

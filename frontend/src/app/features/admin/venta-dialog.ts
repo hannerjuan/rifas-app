@@ -1,24 +1,28 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { startWith } from 'rxjs';
 import { mensajeError } from '../../core/errores';
-import { listaNumeros, normalizarTelefono } from '../../core/formato';
+import {
+  componerTelefono,
+  ERROR_TELEFONO,
+  listaNumeros,
+  normalizarTelefono,
+  PAISES_TELEFONO,
+  PaisTelefono,
+} from '../../core/formato';
 import { Rifa, Venta } from '../../core/modelos';
 import { RifasService } from '../../core/rifas.service';
 import { enlaceWhatsApp, mensajeComprador } from '../../core/whatsapp';
 import { DosCifrasPipe, PesosPipe, TelefonoPipe } from '../../shared/pipes';
+import { telefonoConPais } from '../../shared/telefono';
 
 export interface DatosVenta {
   rifa: Rifa;
   numeros: number[];
   // Compradores ya registrados en la rifa (para sugerir el nombre al escribir el teléfono)
   compradores: { nombre: string; telefono: string; numeros: number[] }[];
-}
-
-function telefonoValido(control: AbstractControl): ValidationErrors | null {
-  return control.value && !normalizarTelefono(control.value) ? { telefono: true } : null;
 }
 
 @Component({
@@ -70,18 +74,30 @@ function telefonoValido(control: AbstractControl): ValidationErrors | null {
 
           <div>
             <label class="etiqueta" for="telefono">WhatsApp del comprador *</label>
-            <input
-              id="telefono"
-              type="tel"
-              inputmode="numeric"
-              class="campo"
-              formControlName="telefono"
-              placeholder="300 123 4567"
-              autocomplete="off"
-              cdkFocusInitial
-            />
+            <div class="flex gap-2">
+              <select
+                class="campo w-28 shrink-0"
+                formControlName="pais"
+                aria-label="País del número"
+                (change)="form.controls.telefono.updateValueAndValidity()"
+              >
+                @for (p of paises; track p.codigo) {
+                  <option [value]="p.codigo">{{ p.etiqueta }}</option>
+                }
+              </select>
+              <input
+                id="telefono"
+                type="tel"
+                inputmode="tel"
+                class="campo"
+                formControlName="telefono"
+                [placeholder]="placeholder()"
+                autocomplete="off"
+                cdkFocusInitial
+              />
+            </div>
             @if (form.controls.telefono.touched && form.controls.telefono.invalid) {
-              <p class="error">Celular colombiano de 10 dígitos (empieza por 3).</p>
+              <p class="error">{{ errorTelefono }}</p>
             }
             @if (conocido(); as c) {
               <div class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-900">
@@ -150,8 +166,12 @@ export class VentaDialog {
   protected readonly error = signal('');
   protected readonly venta = signal<Venta | null>(null);
 
+  protected readonly paises = PAISES_TELEFONO;
+  protected readonly errorTelefono = ERROR_TELEFONO;
+
   protected readonly form = inject(NonNullableFormBuilder).group({
-    telefono: ['', [Validators.required, telefonoValido]],
+    pais: ['CO' as PaisTelefono],
+    telefono: ['', [Validators.required, telefonoConPais()]],
     nombre: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(100)]],
     estado: ['RESERVADA' as 'RESERVADA' | 'PAGADA'],
   });
@@ -159,8 +179,13 @@ export class VentaDialog {
     initialValue: this.form.getRawValue(),
   });
 
+  protected readonly placeholder = computed(
+    () => PAISES_TELEFONO.find((p) => p.codigo === this.valores().pais)?.placeholder ?? '',
+  );
+
   protected readonly conocido = computed(() => {
-    const tel = normalizarTelefono(this.valores().telefono ?? '');
+    const v = this.valores();
+    const tel = normalizarTelefono(componerTelefono(v.pais ?? 'CO', v.telefono ?? ''));
     return tel ? (this.datos.compradores.find((c) => c.telefono === tel) ?? null) : null;
   });
 
@@ -178,11 +203,16 @@ export class VentaDialog {
       this.form.markAllAsTouched();
       return;
     }
-    const { telefono, nombre, estado } = this.form.getRawValue();
+    const { pais, telefono, nombre, estado } = this.form.getRawValue();
     this.guardando.set(true);
     this.error.set('');
     this.rifasService
-      .vender(this.datos.rifa.id, { numeros: this.datos.numeros, telefono, nombre: nombre.trim(), estado })
+      .vender(this.datos.rifa.id, {
+        numeros: this.datos.numeros,
+        telefono: componerTelefono(pais, telefono),
+        nombre: nombre.trim(),
+        estado,
+      })
       .subscribe({
         next: (v) => this.venta.set(v),
         error: (e) => {

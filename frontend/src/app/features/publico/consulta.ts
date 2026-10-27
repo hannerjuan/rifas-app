@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { mensajeError } from '../../core/errores';
-import { normalizarTelefono } from '../../core/formato';
+import { componerTelefono, normalizarTelefono, PAISES_TELEFONO, PaisTelefono } from '../../core/formato';
 import { ResultadoConsulta } from '../../core/modelos';
 import { PublicoService } from '../../core/publico.service';
 import { enlaceWhatsApp, mensajeReportarPago } from '../../core/whatsapp';
@@ -21,14 +21,19 @@ import { DosCifrasPipe, FechaPipe, PesosPipe, TelefonoPipe } from '../../shared/
       </div>
 
       <form class="tarjeta flex gap-2 p-3" (ngSubmit)="consultar()">
+        <select class="campo w-24 shrink-0 px-2 sm:w-28" name="pais" aria-label="País del número" [(ngModel)]="pais">
+          @for (p of paises; track p.codigo) {
+            <option [value]="p.codigo">{{ p.etiqueta }}</option>
+          }
+        </select>
         <label for="telefono" class="sr-only">Número de WhatsApp</label>
         <input
           id="telefono"
           name="telefono"
           type="tel"
-          inputmode="numeric"
-          class="campo text-lg"
-          placeholder="300 123 4567"
+          inputmode="tel"
+          class="campo min-w-0 text-lg"
+          [placeholder]="placeholder()"
           autocomplete="tel-national"
           [(ngModel)]="telefono"
         />
@@ -126,16 +131,22 @@ import { DosCifrasPipe, FechaPipe, PesosPipe, TelefonoPipe } from '../../shared/
 export class Consulta {
   private readonly publico = inject(PublicoService);
 
+  protected readonly paises = PAISES_TELEFONO;
+  protected pais: PaisTelefono = 'CO';
   protected telefono = '';
+
+  protected placeholder() {
+    return PAISES_TELEFONO.find((p) => p.codigo === this.pais)?.placeholder ?? '';
+  }
   protected readonly consultado = signal('');
   protected readonly cargando = signal(false);
   protected readonly error = signal('');
   protected readonly resultados = signal<ResultadoConsulta[] | null>(null);
 
   consultar() {
-    const tel = normalizarTelefono(this.telefono);
+    const tel = normalizarTelefono(componerTelefono(this.pais, this.telefono));
     if (!tel) {
-      this.error.set('Escribe un celular colombiano de 10 dígitos (empieza por 3).');
+      this.error.set('Escribe un celular válido de Colombia (10 dígitos) o de España (9 dígitos).');
       return;
     }
     this.error.set('');

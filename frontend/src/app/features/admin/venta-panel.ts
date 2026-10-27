@@ -1,10 +1,18 @@
 import { Dialog, DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AvisosService } from '../../core/avisos.service';
 import { mensajeError } from '../../core/errores';
-import { listaNumeros, normalizarTelefono } from '../../core/formato';
+import {
+  componerTelefono,
+  ERROR_TELEFONO,
+  listaNumeros,
+  PAISES_TELEFONO,
+  PaisTelefono,
+  separarTelefono,
+} from '../../core/formato';
+import { telefonoConPais } from '../../shared/telefono';
 import { ETIQUETA_ESTADO, EstadoBoleta, Movimiento, Rifa, Venta } from '../../core/modelos';
 import { RifasService } from '../../core/rifas.service';
 import { enlaceWhatsApp, mensajeComprador } from '../../core/whatsapp';
@@ -17,9 +25,6 @@ export interface DatosPanelVenta {
   numero?: number; // número que se tocó en la matriz
 }
 
-function telefonoValido(control: AbstractControl): ValidationErrors | null {
-  return control.value && !normalizarTelefono(control.value) ? { telefono: true } : null;
-}
 
 // Detalle de un comprador: sus números, cambio de estado, liberación, corrección de datos y WhatsApp
 @Component({
@@ -60,9 +65,21 @@ function telefonoValido(control: AbstractControl): ValidationErrors | null {
               </div>
               <div>
                 <label class="etiqueta" for="telefono">WhatsApp</label>
-                <input id="telefono" type="tel" class="campo" formControlName="telefono" />
+                <div class="flex gap-2">
+                  <select
+                    class="campo w-28 shrink-0"
+                    formControlName="pais"
+                    aria-label="País del número"
+                    (change)="form.controls.telefono.updateValueAndValidity()"
+                  >
+                    @for (p of paises; track p.codigo) {
+                      <option [value]="p.codigo">{{ p.etiqueta }}</option>
+                    }
+                  </select>
+                  <input id="telefono" type="tel" inputmode="tel" class="campo" formControlName="telefono" />
+                </div>
                 @if (form.controls.telefono.touched && form.controls.telefono.invalid) {
-                  <p class="error">Celular colombiano de 10 dígitos.</p>
+                  <p class="error">{{ errorTelefono }}</p>
                 }
               </div>
             </div>
@@ -191,6 +208,8 @@ export class VentaPanel implements OnInit {
   private readonly dialog = inject(Dialog);
 
   protected readonly etiqueta = ETIQUETA_ESTADO;
+  protected readonly paises = PAISES_TELEFONO;
+  protected readonly errorTelefono = ERROR_TELEFONO;
   protected readonly venta = signal<Venta | null>(null);
   protected readonly seleccion = signal<number[]>([]);
   protected readonly editando = signal(false);
@@ -211,7 +230,8 @@ export class VentaPanel implements OnInit {
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     nombre: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(100)]],
-    telefono: ['', [Validators.required, telefonoValido]],
+    pais: ['CO' as PaisTelefono],
+    telefono: ['', [Validators.required, telefonoConPais()]],
   });
 
   ngOnInit() {
@@ -299,7 +319,8 @@ export class VentaPanel implements OnInit {
 
   editar() {
     const v = this.venta()!;
-    this.form.reset({ nombre: v.nombre, telefono: v.telefono.slice(2) });
+    const { pais, numero } = separarTelefono(v.telefono);
+    this.form.reset({ nombre: v.nombre, pais, telefono: numero });
     this.editando.set(true);
   }
 
@@ -309,8 +330,9 @@ export class VentaPanel implements OnInit {
       return;
     }
     this.trabajando.set(true);
-    const { nombre, telefono } = this.form.getRawValue();
-    this.rifasService.editarVenta(this.datos.rifa.id, this.datos.ventaId, { nombre: nombre.trim(), telefono }).subscribe({
+    const { nombre, pais, telefono } = this.form.getRawValue();
+    const datos = { nombre: nombre.trim(), telefono: componerTelefono(pais, telefono) };
+    this.rifasService.editarVenta(this.datos.rifa.id, this.datos.ventaId, datos).subscribe({
       next: (v) => {
         this.venta.set(v);
         this.editando.set(false);
