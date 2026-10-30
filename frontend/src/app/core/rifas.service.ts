@@ -14,6 +14,7 @@ export interface RifaEntrada {
   loteria: string;
   responsableNombre: string;
   responsableTelefono: string;
+  cuentasPago: string | null;
 }
 
 const API = '/api/v1';

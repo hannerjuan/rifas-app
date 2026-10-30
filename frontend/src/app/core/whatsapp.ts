@@ -53,6 +53,39 @@ export function mensajeComprador(
   return lineas.join('\n');
 }
 
+// Mensaje del vendedor al comprador para cobrar los números pendientes. Todos los datos salen de la rifa.
+export function mensajeCobro(
+  rifa: DatosSorteo & { cuentasPago: string | null },
+  comprador: { nombre: string; boletas: { numero: number; estado: EstadoBoleta }[] },
+): string {
+  const pendientes = comprador.boletas.filter((b) => b.estado === 'RESERVADA').map((b) => b.numero);
+  const cantidad = pendientes.length;
+  const cuentas = (rifa.cuentasPago ?? '')
+    .split('\n')
+    .map((c) => c.trim())
+    .filter(Boolean);
+
+  return [
+    `¡Hola ${comprador.nombre}! 👋`,
+    `Te escribo por la rifa *${rifa.nombre}* 🎟️`,
+    '',
+    `Tienes *${cantidad} ${cantidad === 1 ? 'número pendiente' : 'números pendientes'} de pago*:`,
+    `🔢 *${listaNumeros(pendientes)}*`,
+    `💰 ${cantidad} × ${pesos(rifa.valorBoleta)} = *${pesos(cantidad * rifa.valorBoleta)}*`,
+    '',
+    'Puedes pagar en cualquiera de estas cuentas:',
+    ...cuentas.map((c) => `🏦 ${c}`),
+    '',
+    'Cuando pagues, envíame el comprobante por aquí y marco tus números como *PAGADOS* ✅',
+    '',
+    `📅 *Sorteo:* ${fechaLarga(rifa.fechaSorteo)} (${rifa.loteria})`,
+    ADVERTENCIA,
+    '',
+    '¡Gracias! 🙌',
+    `${rifa.responsableNombre} · ${telefonoVisible(rifa.responsableTelefono)}`,
+  ].join('\n');
+}
+
 // Mensaje al ganador
 export function mensajeGanador(rifa: DatosSorteo & { resultadoLoteria: string | null }, nombre: string, numero: number) {
   return [

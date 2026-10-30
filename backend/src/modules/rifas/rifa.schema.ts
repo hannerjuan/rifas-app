@@ -29,6 +29,7 @@ export const RifaCrearSchema = z.object({
     loteria: z.string().trim().min(3, 'Seleccione la lotería').max(80),
     responsableNombre: z.string().trim().min(3, 'Ingrese el nombre del responsable').max(80),
     responsableTelefono: TelefonoSchema,
+    cuentasPago: textoOpcional(500),
 });
 
 export const RifaActualizarSchema = RifaCrearSchema.partial();

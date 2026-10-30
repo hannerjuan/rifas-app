@@ -4,7 +4,7 @@ import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validatio
 import { Router, RouterLink } from '@angular/router';
 import { startWith } from 'rxjs';
 import { AvisosService } from '../../core/avisos.service';
-import { DESFASE_COLOMBIA, RESPONSABLE_POR_DEFECTO } from '../../core/config';
+import { CUENTAS_POR_DEFECTO, DESFASE_COLOMBIA, RESPONSABLE_POR_DEFECTO } from '../../core/config';
 import { mensajeError } from '../../core/errores';
 import {
   componerTelefono,
@@ -228,6 +228,25 @@ function proximaFecha(loteria: Loteria): string {
           </p>
         </section>
 
+        <!-- Cuentas para pagar -->
+        <section class="tarjeta space-y-4 p-5">
+          <h2 class="font-bold text-slate-900">Cuentas para pagar</h2>
+          <div>
+            <label class="etiqueta" for="cuentasPago">Cuentas (una por línea)</label>
+            <textarea
+              id="cuentasPago"
+              rows="3"
+              class="campo"
+              formControlName="cuentasPago"
+              placeholder="Nequi: 300 000 0000&#10;Llave: @3000000000"
+            ></textarea>
+            @if (invalido('cuentasPago')) {
+              <p class="error">Máximo 500 caracteres.</p>
+            }
+          </div>
+          <p class="text-xs text-slate-500">Se envían en el mensaje de WhatsApp para cobrar las boletas pendientes.</p>
+        </section>
+
         <div class="flex justify-end gap-2">
           <a [routerLink]="id() ? ['/admin/rifas', id()] : ['/admin']" class="btn btn-secundario">Cancelar</a>
           <button type="submit" class="btn btn-primario" [disabled]="guardando()">
@@ -267,6 +286,7 @@ export class RifaForm implements OnInit {
     responsableNombre: [RESPONSABLE_POR_DEFECTO.nombre, [Validators.required, Validators.minLength(3)]],
     responsablePais: ['CO' as PaisTelefono],
     responsableTelefono: [RESPONSABLE_POR_DEFECTO.telefono, [Validators.required, telefonoConPais('responsablePais')]],
+    cuentasPago: [CUENTAS_POR_DEFECTO, Validators.maxLength(500)],
   });
 
   protected readonly valores = toSignal(this.form.valueChanges.pipe(startWith(this.form.getRawValue())), {
@@ -324,6 +344,7 @@ export class RifaForm implements OnInit {
             responsableNombre: r.responsableNombre,
             responsablePais: separarTelefono(r.responsableTelefono).pais,
             responsableTelefono: separarTelefono(r.responsableTelefono).numero,
+            cuentasPago: r.cuentasPago ?? '',
           });
           if (r.metricas.pagadas + r.metricas.reservadas > 0) {
             this.valorBloqueado.set(true);
@@ -387,6 +408,7 @@ export class RifaForm implements OnInit {
       loteria,
       responsableNombre: v.responsableNombre.trim(),
       responsableTelefono: componerTelefono(v.responsablePais, v.responsableTelefono),
+      cuentasPago: v.cuentasPago.trim() || null,
     };
 
     this.guardando.set(true);

@@ -39,6 +39,7 @@ export interface RifaPublica extends DatosSorteo {
 }
 
 export interface Rifa extends RifaPublica {
+  cuentasPago: string | null;
   ganadorNombre: string | null;
   ganadorTelefono: string | null;
   finalizadaEn: string | null;

@@ -57,6 +57,7 @@ model Rifa {
   loteria             String
   responsableNombre   String
   responsableTelefono String // normalizado: 57 + 10 dígitos
+  cuentasPago         String? // cuentas para pagar, una por línea (va en el mensaje de cobro)
   estado              EstadoRifa @default(ACTIVA)
 
   // Resultado (se llena al finalizar)

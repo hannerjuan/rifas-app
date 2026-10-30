@@ -15,7 +15,7 @@ import {
 import { telefonoConPais } from '../../shared/telefono';
 import { ETIQUETA_ESTADO, EstadoBoleta, Movimiento, Rifa, Venta } from '../../core/modelos';
 import { RifasService } from '../../core/rifas.service';
-import { enlaceWhatsApp, mensajeComprador } from '../../core/whatsapp';
+import { enlaceWhatsApp, mensajeCobro, mensajeComprador } from '../../core/whatsapp';
 import { confirmar } from '../../shared/confirmar';
 import { DosCifrasPipe, FechaPipe, PesosPipe, TelefonoPipe } from '../../shared/pipes';
 
@@ -191,7 +191,23 @@ export interface DatosPanelVenta {
             } @else {
               <span></span>
             }
-            <a [href]="enlace()" target="_blank" rel="noopener" class="btn btn-whatsapp">Enviar estado por WhatsApp</a>
+            <div class="flex flex-wrap justify-end gap-2">
+              @if (pendiente() > 0 && datos.rifa.estado === 'ACTIVA') {
+                @if (datos.rifa.cuentasPago) {
+                  <a [href]="enlaceCobro()" target="_blank" rel="noopener" class="btn btn-whatsapp">Cobrar boleta/s</a>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn btn-whatsapp"
+                    disabled
+                    title="Agregue las cuentas para pagar en «Editar rifa»"
+                  >
+                    Cobrar boleta/s
+                  </button>
+                }
+              }
+              <a [href]="enlace()" target="_blank" rel="noopener" class="btn btn-whatsapp">Enviar estado por WhatsApp</a>
+            </div>
           </div>
         }
       } @else {
@@ -226,6 +242,11 @@ export class VentaPanel implements OnInit {
   protected readonly enlace = computed(() => {
     const v = this.venta();
     return v ? enlaceWhatsApp(v.telefono, mensajeComprador(this.datos.rifa, v)) : '';
+  });
+
+  protected readonly enlaceCobro = computed(() => {
+    const v = this.venta();
+    return v ? enlaceWhatsApp(v.telefono, mensajeCobro(this.datos.rifa, v)) : '';
   });
 
   protected readonly form = inject(NonNullableFormBuilder).group({
